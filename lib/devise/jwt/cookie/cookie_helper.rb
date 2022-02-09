@@ -2,7 +2,11 @@ module Devise
   module JWT
     module Cookie
       class CookieHelper
-        include Cookie::Import['name', 'domain', 'secure']
+        
+        def initialize(env)
+          path = env['PATH_INFO']
+          @config = config_for(path)
+        end
 
         def build(token)
           if token.nil?
@@ -13,6 +17,7 @@ module Devise
         end
 
         def read_from(cookies)
+          name = @config[:name]
           cookies[name]
         end
 
@@ -24,11 +29,11 @@ module Devise
             value: token,
             path: '/',
             httponly: true,
-            secure: secure,
+            secure: @config[:secure],
             expires: Time.at(jwt['exp'].to_i)
           }
-          res[:domain] = domain if domain.present?
-          [name, res]
+          res[:domain] = @config[:domain] if @config[:domain].present?
+          [@config[:name], res]
         end
 
         def remove_cookie
@@ -36,14 +41,17 @@ module Devise
             value: nil,
             path: '/',
             httponly: true,
-            secure: secure,
+            secure: @config[:secure],
             max_age: '0',
             expires: Time.at(0)
           }
-          res[:domain] = domain if domain.present?
-          [name, res]
+          res[:domain] = @config[:domain] if @config[:domain].present?
+          [@config[:name], res]
         end
-
+        
+        def config_for(path)
+          Devise.jwt_cookie_config.match(path) || Devise.default_jwt_cookie_config
+        end
       end
     end
   end

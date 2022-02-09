@@ -4,21 +4,45 @@ require 'devise/jwt/cookie/strategy'
 
 # Authentication library
 module Devise
+  cattr_reader :jwt_cookie_config
+
   def self.jwt_cookie
-    yield(Devise::JWT::Cookie.config)
+    @@jwt_cookie_config = Devise::JWT::Cookie::Config.new
+    yield(@@jwt_cookie_config)
+    @@jwt_cookie_config.finalize!
+  end
+
+  def self.default_jwt_cookie_config
+    {
+      name: 'access_token',
+      secure: false,
+      domain: nil
+    }.freeze
   end
 
   add_module(:jwt_cookie_authenticatable, strategy: :jwt_cookie)
 
   module JWT
     module Cookie
-      extend Dry::Configurable
+      class Config
+        def initialize
+          @paths = []
+        end
 
-      setting :name, 'access_token'
-      setting :secure, true
-      setting :domain
+        def []=(path, v)
+          @paths.push([path, v])
+        end
 
-      Import = Dry::AutoInject(config)
+        def finalize!
+          @paths.freeze
+        end
+
+        def match(path)
+          # TODO: This is very naive matching and may need optimisation if turns out to be to slow.
+          _, v = @paths.find { |k, _| k =~ path}
+          v
+        end
+      end
     end
   end
 end

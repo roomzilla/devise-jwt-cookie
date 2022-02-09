@@ -26,7 +26,7 @@ module Devise
         private
 
         def token
-          @token ||= CookieHelper.new.read_from(cookies)
+          @token ||= CookieHelper.new(env).read_from(cookies)
         end
       end
     end
